@@ -1,0 +1,155 @@
+substitutions:
+  name: brivis-heater
+  friendly: Brivis Heater
+
+esphome:
+  name: $name
+  platform: ESP32
+  board: esp-wrover-kit
+  includes:
+    - brivis_sensor.h
+  on_boot:
+    priority: -100
+    then:
+      - script.execute: startup
+      
+script:
+  - id: startup
+    then:
+      - delay: 5s
+      - lambda: |-
+          get_briviscustomcomponent(id(brivis_custom_object))->Announce();
+
+dallas:
+  - pin: GPIO15
+    update_interval: 5s
+  
+sensor:
+- platform: dallas
+  id: local_temp
+  name: "House Temperature"
+  address: 0xAC00000D195BB528
+#  accuracy_decimals: 1
+
+uart:
+  id: uart_bus
+  tx_pin:
+    number: GPIO17
+    inverted: true
+  rx_pin:
+    number: GPIO16
+    inverted: true
+#  baud_rate: 9600
+  baud_rate: 9650
+
+# climate:
+#   - platform: brivis_networker
+#     id: brivis
+#     name: "Brivis Networker"
+#     publish_uart_data: brivis_uart_buffer
+#     supports_heat: true
+#     supports_cool: true
+#     supports_fan_only: true
+#     default_target_temperature_low: 20 °C
+#     default_target_temperature_high: 27 °C
+#     sensor: local_temp
+#     visual:
+#       min_temperature:  12 °C
+#       max_temperature: 32 °C
+#       temperature_step: 0.1 °C
+#  - platform: thermostat
+#    name: "Thermostat Climate Controller"
+#    sensor: local_temp
+#    default_target_temperature_low: 20 °C
+#    default_target_temperature_high: 22 °C
+#    visual:
+#      min_temperature:  12 °C
+#      max_temperature: 32 °C
+#      temperature_step: 0.1 °C
+#    idle_action:
+#      - delay: 1s
+#    heat_action:
+#      - delay: 1s
+#    cool_action:
+#      - delay: 1s
+
+# text_sensor:
+#   - platform: template
+#     id: brivis_uart_buffer
+#     name: "Brivis UART Buffer"
+#     update_interval: never
+
+text_sensor:
+- platform: custom
+  id: brivis_custom_object
+  lambda: |-
+    auto brivis_custom = new BrivisCustomComponent(id(uart_bus));
+    App.register_component(brivis_custom);
+    return {brivis_custom};
+  text_sensors:
+    id: brivis_uart_buffer
+    name: "Brivis UART Buffer"
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_pass
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "${friendly} Fallback"
+    password: !secret esphome_fallback
+
+# time:
+#   - platform: homeassistant
+#     id: ntp_time
+#     timezone: !secret timezone
+#     on_time_sync:
+#       then:
+#         - logger.log: "Synchronized system clock"
+#         - logger.log: 
+#             format: "Boot time %02d:%02d:%02d"
+#             args: [ id(ntp_time).now().hour, id(ntp_time).now().minute, id(ntp_time).now().second ]
+#     on_time:
+#       - seconds: 0
+#         minutes: /1
+#         then:
+#           - logger.log: 
+#               format: "Time %02d:%02d:%02d"
+#               args: [ id(ntp_time).now().hour, id(ntp_time).now().minute, id(ntp_time).now().second ]
+ 
+
+time:
+  - platform: sntp
+    id: ntp_time
+    servers: !secret ntp_server
+    timezone: !secret timezone
+    on_time_sync:
+      then:
+        - logger.log: "Synchronized system clock"
+        - logger.log: 
+            format: "Boot time %02d:%02d:%02d"
+            args: [ id(ntp_time).now().hour, id(ntp_time).now().minute, id(ntp_time).now().second ]
+    on_time:
+      - seconds: 0
+        minutes: /1
+        then:
+          - logger.log: 
+              format: "Time %02d:%02d:%02d"
+              args: [ id(ntp_time).now().hour, id(ntp_time).now().minute, id(ntp_time).now().second ]
+#          - lambda: |-
+#              id(brivis_uart_buffer).InitTimeout();
+            
+captive_portal:
+
+# Enable logging
+logger:
+  level: debug
+
+# Enable Home Assistant API
+api:
+  password: !secret esphome_api_pass
+  encryption:
+    key: !secret esphome_encryption
+
+ota:
+   password: !secret esphome_ota_pass
