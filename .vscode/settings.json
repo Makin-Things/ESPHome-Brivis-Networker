@@ -1,0 +1,24 @@
+{
+  "cSpell.enableFiletypes": [
+    "!c",
+    "!cpp",
+    "!css",
+    "!html",
+    "!javascript",
+    "!javascriptreact",
+    "!json",
+    "!php",
+    "!python",
+    "!typescript",
+    "!yaml",
+    "!yml"
+  ],
+  "cSpell.language": "en-GB",
+  "C_Cpp.errorSquiggles": "Disabled",
+  "cSpell.words": [
+    "Brivis",
+    "Networker",
+    "Smartie",
+    "wifi"
+  ]
+}

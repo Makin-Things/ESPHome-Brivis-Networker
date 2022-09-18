@@ -5,32 +5,256 @@ substitutions:
 esphome:
   name: $name
   platform: ESP32
-  board: esp-wrover-kit
+  board: esp32dev
   includes:
-    - brivis_sensor.h
+    - brivis-heater.h
   on_boot:
     priority: -100
     then:
+      - wait_until:
+          condition:
+            api.connected:
+          timeout: 5s
       - script.execute: startup
+      
+globals:
+  - id: count
+    type: int
+    restore_value: no
+  - id: update
+    type: int
+    initial_value: "0"
+    restore_value: no
       
 script:
   - id: startup
     then:
       - delay: 5s
-      - lambda: |-
-          get_briviscustomcomponent(id(brivis_custom_object))->Announce();
+      - script.execute: sendInit # 19
+      - script.wait: sendInit
+      - delay: 2500ms
+      - script.execute: sendIdle # 08
+      - script.wait: sendIdle
+      - delay: 100ms
+      - script.execute: sendFanSpeed #1E
+      - script.wait: sendFanSpeed
+      - delay: 100ms
+      - script.execute: sendFurnaceStatusRequest # 06
+      - script.wait: sendFurnaceStatusRequest
+  - id: sendInit
+    then:
+      - lambda: get_briviscustomcomponent(id(brivis_custom_object))->SendInit();
+  - id: sendIdle
+    then:
+      - logger.log: "enter sendIdle"
+      - lambda: get_briviscustomcomponent(id(brivis_custom_object))->SendIdle();    # send the initial packet
+      - wait_until:                                                                 # give it one second to get and ack from the furnace
+          condition:
+            lambda: return get_briviscustomcomponent(id(brivis_custom_object))->GotAck();
+          timeout: 1s
+      - if:                                                                         # if we didn't get an ack then try 2 more times
+          condition:
+            lambda: return get_briviscustomcomponent(id(brivis_custom_object))->GotAck() == false;
+          then:
+            - lambda: id(count) = 1;
+            - while:
+                condition:
+                  lambda: return (id(count) > 0) && (get_briviscustomcomponent(id(brivis_custom_object))->GotAck() == false);
+                then:
+                  - lambda: |-
+                      get_briviscustomcomponent(id(brivis_custom_object))->Resend();
+                      id(count)--;
+                  - wait_until:
+                      condition:
+                        lambda: return get_briviscustomcomponent(id(brivis_custom_object))->GotAck();
+                      timeout: 1s            
+      - logger.log: "exit sendIdle"
+  - id: sendFanSpeed
+    then:
+      - logger.log: "enter sendFanSpeed"
+      - lambda: get_briviscustomcomponent(id(brivis_custom_object))->SendFanSpeed();    # send the initial packet
+      - wait_until:                                                                 # give it one second to get and ack from the furnace
+          condition:
+            lambda: return get_briviscustomcomponent(id(brivis_custom_object))->GotAck();
+          timeout: 1s
+      - if:                                                                         # if we didn't get an ack then try 2 more times
+          condition:
+            lambda: return get_briviscustomcomponent(id(brivis_custom_object))->GotAck() == false;
+          then:
+            - lambda: id(count) = 1;
+            - while:
+                condition:
+                  lambda: return (id(count) > 0) && (get_briviscustomcomponent(id(brivis_custom_object))->GotAck() == false);
+                then:
+                  - lambda: |-
+                      get_briviscustomcomponent(id(brivis_custom_object))->Resend();
+                      id(count)--;
+                  - wait_until:
+                      condition:
+                        lambda: return get_briviscustomcomponent(id(brivis_custom_object))->GotAck();
+                      timeout: 1s            
+      - logger.log: "exit sendFanSpeed"
+  - id: sendFurnaceStatusRequest
+    then:
+      - logger.log: "enter sendFurnaceStatusRequest"
+      - lambda: get_briviscustomcomponent(id(brivis_custom_object))->SendFurnaceStatusRequest();    # send the initial packet
+      - wait_until:                                                                 # give it one second to get and ack from the furnace
+          condition:
+            lambda: return get_briviscustomcomponent(id(brivis_custom_object))->GotAck();
+          timeout: 1s
+      - if:                                                                         # if we didn't get an ack then try 2 more times
+          condition:
+            lambda: return get_briviscustomcomponent(id(brivis_custom_object))->GotAck() == false;
+          then:
+            - lambda: id(count) = 1;
+            - while:
+                condition:
+                  lambda: return (id(count) > 0) && (get_briviscustomcomponent(id(brivis_custom_object))->GotAck() == false);
+                then:
+                  - lambda: |-
+                      get_briviscustomcomponent(id(brivis_custom_object))->Resend();
+                      id(count)--;
+                  - wait_until:
+                      condition:
+                        lambda: return get_briviscustomcomponent(id(brivis_custom_object))->GotAck();
+                      timeout: 1s            
+      - logger.log: "exit sendFurnaceStatusRequest"
+  - id: sendTime
+    then:
+      - logger.log: "enter sendTime"
+      - lambda: get_briviscustomcomponent(id(brivis_custom_object))->SendTime(id(ntp_time).now().hour, id(ntp_time).now().minute, (id(ntp_time).now().day_of_week + 5) % 7);    # send the initial packet
+      - wait_until:                                                                 # give it one second to get and ack from the furnace
+          condition:
+            lambda: return get_briviscustomcomponent(id(brivis_custom_object))->GotAck();
+          timeout: 1s
+      - if:                                                                         # if we didn't get an ack then try 2 more times
+          condition:
+            lambda: return get_briviscustomcomponent(id(brivis_custom_object))->GotAck() == false;
+          then:
+            - lambda: id(count) = 1;
+            - while:
+                condition:
+                  lambda: return (id(count) > 0) && (get_briviscustomcomponent(id(brivis_custom_object))->GotAck() == false);
+                then:
+                  - lambda: |-
+                      get_briviscustomcomponent(id(brivis_custom_object))->Resend();
+                      id(count)--;
+                  - wait_until:
+                      condition:
+                        lambda: return get_briviscustomcomponent(id(brivis_custom_object))->GotAck();
+                      timeout: 1s            
+      - logger.log: "exit sendTime"
+  - id: sendPingFurnace
+    then:
+      - logger.log: "enter sendPingFurnace"
+      - lambda: get_briviscustomcomponent(id(brivis_custom_object))->SendPingFurnace();    # send the initial packet
+      - wait_until:                                                                 # give it one second to get and ack from the furnace
+          condition:
+            lambda: return get_briviscustomcomponent(id(brivis_custom_object))->GotAck();
+          timeout: 1s
+      - if:                                                                         # if we didn't get an ack then try 2 more times
+          condition:
+            lambda: return get_briviscustomcomponent(id(brivis_custom_object))->GotAck() == false;
+          then:
+            - lambda: id(count) = 1;
+            - while:
+                condition:
+                  lambda: return (id(count) > 0) && (get_briviscustomcomponent(id(brivis_custom_object))->GotAck() == false);
+                then:
+                  - lambda: |-
+                      get_briviscustomcomponent(id(brivis_custom_object))->Resend();
+                      id(count)--;
+                  - wait_until:
+                      condition:
+                        lambda: return get_briviscustomcomponent(id(brivis_custom_object))->GotAck();
+                      timeout: 1s            
+      - logger.log: "exit sendPingFurnace"
+  - id: sendTemperatureInfo
+    then:
+      - logger.log: "enter sendTemperatureInfo"
+      - lambda: get_briviscustomcomponent(id(brivis_custom_object))->SendTemperatureInfo();    # send the initial packet
+      - wait_until:                                                                 # give it one second to get and ack from the furnace
+          condition:
+            lambda: return get_briviscustomcomponent(id(brivis_custom_object))->GotAck();
+          timeout: 1s
+      - if:                                                                         # if we didn't get an ack then try 2 more times
+          condition:
+            lambda: return get_briviscustomcomponent(id(brivis_custom_object))->GotAck() == false;
+          then:
+            - lambda: id(count) = 1;
+            - while:
+                condition:
+                  lambda: return (id(count) > 0) && (get_briviscustomcomponent(id(brivis_custom_object))->GotAck() == false);
+                then:
+                  - lambda: |-
+                      get_briviscustomcomponent(id(brivis_custom_object))->Resend();
+                      id(count)--;
+                  - wait_until:
+                      condition:
+                        lambda: return get_briviscustomcomponent(id(brivis_custom_object))->GotAck();
+                      timeout: 1s            
+      - logger.log: "exit sendTemperatureInfo"
+  - id: sendLongPing
+    then:
+      - logger.log: "enter sendLongPing"
+      - lambda: get_briviscustomcomponent(id(brivis_custom_object))->SendLongPing();    # send the initial packet
+      - wait_until:                                                                 # give it one second to get and ack from the furnace
+          condition:
+            lambda: return get_briviscustomcomponent(id(brivis_custom_object))->GotAck();
+          timeout: 1s
+      - if:                                                                         # if we didn't get an ack then try 2 more times
+          condition:
+            lambda: return get_briviscustomcomponent(id(brivis_custom_object))->GotAck() == false;
+          then:
+            - lambda: id(count) = 1;
+            - while:
+                condition:
+                  lambda: return (id(count) > 0) && (get_briviscustomcomponent(id(brivis_custom_object))->GotAck() == false);
+                then:
+                  - lambda: |-
+                      get_briviscustomcomponent(id(brivis_custom_object))->Resend();
+                      id(count)--;
+                  - wait_until:
+                      condition:
+                        lambda: return get_briviscustomcomponent(id(brivis_custom_object))->GotAck();
+                      timeout: 1s            
+      - logger.log: "exit sendLongPing"
+      
+text_sensor:
+  - platform: template
+    id: brivis_networker_uart
+    name: "Brivis Networker UART"
+    update_interval: never
 
 dallas:
   - pin: GPIO15
     update_interval: 5s
   
 sensor:
-- platform: dallas
-  id: local_temp
-  name: "House Temperature"
-  address: 0xAC00000D195BB528
-#  accuracy_decimals: 1
-
+  - platform: dallas
+    id: local_temp
+    name: "House Temperature"
+    address: 0xAC00000D195BB528
+    filters:
+      - lambda: return round(x*10.0)/10.0;
+      - delta: 0.1
+    on_value:
+      then:
+        - logger.log: "------ temp changed -----"
+        - if: # heat
+            condition:
+              lambda: return get_briviscustomcomponent(id(brivis_custom_object))->GetMode()  == 3;
+            then:        
+              - logger.log: 
+                  format: "dallas temperature changed %f"
+                  args: [ x ]
+              - if:
+                  condition:
+                    lambda: return get_briviscustomcomponent(id(brivis_custom_object))->GetChanged();
+                  then:
+                    - script.execute: sendTemperatureInfo #0B
+                    - script.wait: sendTemperatureInfo
+                    
 uart:
   id: uart_bus
   tx_pin:
@@ -48,23 +272,22 @@ uart:
 #     name: "Brivis Networker"
 #     publish_uart_data: brivis_uart_buffer
 #     supports_heat: true
-#     supports_cool: true
+#     supports_cool: false
 #     supports_fan_only: true
-#     default_target_temperature_low: 20 °C
-#     default_target_temperature_high: 27 °C
+#     default_target_temperature_low: 18 °C
 #     sensor: local_temp
 #     visual:
-#       min_temperature:  12 °C
-#       max_temperature: 32 °C
-#       temperature_step: 0.1 °C
+#       min_temperature:  8 °C
+#       max_temperature: 30 °C
+#       temperature_step: 1 °C
 #  - platform: thermostat
 #    name: "Thermostat Climate Controller"
 #    sensor: local_temp
-#    default_target_temperature_low: 20 °C
-#    default_target_temperature_high: 22 °C
+#    default_target_temperature_low: 18 °C
+#    default_target_temperature_high: 18 °C
 #    visual:
-#      min_temperature:  12 °C
-#      max_temperature: 32 °C
+#      min_temperature:  8 °C
+#      max_temperature: 30 °C
 #      temperature_step: 0.1 °C
 #    idle_action:
 #      - delay: 1s
@@ -73,22 +296,20 @@ uart:
 #    cool_action:
 #      - delay: 1s
 
-# text_sensor:
-#   - platform: template
-#     id: brivis_uart_buffer
-#     name: "Brivis UART Buffer"
-#     update_interval: never
-
-text_sensor:
+climate:
 - platform: custom
   id: brivis_custom_object
   lambda: |-
     auto brivis_custom = new BrivisCustomComponent(id(uart_bus));
+    brivis_custom->set_sensor(id(local_temp));
+    brivis_custom->set_text_sensor(id(brivis_networker_uart));
     App.register_component(brivis_custom);
     return {brivis_custom};
-  text_sensors:
-    id: brivis_uart_buffer
-    name: "Brivis UART Buffer"
+  climates:
+    - name: "Heater"
+  # text_sensors:
+  # - id: brivis_networker_uart
+  #   name: "Brivis Networker UART
 
 wifi:
   ssid: !secret wifi_ssid
@@ -116,7 +337,6 @@ wifi:
 #           - logger.log: 
 #               format: "Time %02d:%02d:%02d"
 #               args: [ id(ntp_time).now().hour, id(ntp_time).now().minute, id(ntp_time).now().second ]
- 
 
 time:
   - platform: sntp
@@ -134,11 +354,78 @@ time:
         minutes: /1
         then:
           - logger.log: 
-              format: "Time %02d:%02d:%02d"
-              args: [ id(ntp_time).now().hour, id(ntp_time).now().minute, id(ntp_time).now().second ]
-#          - lambda: |-
-#              id(brivis_uart_buffer).InitTimeout();
-            
+              format: "Time %02d:%02d:%02d %1d"
+              args: [ id(ntp_time).now().hour, id(ntp_time).now().minute, id(ntp_time).now().second, (id(ntp_time).now().day_of_week + 5) % 7 ]
+          - if: # Off
+              condition:
+                lambda: return get_briviscustomcomponent(id(brivis_custom_object))->GetMode() == 0; 
+              then:
+                - script.execute: sendTime # 07
+                - script.wait: sendTime
+                - delay: 100ms
+                - script.execute: sendIdle # 08
+                - script.wait: sendIdle
+                - delay: 100ms
+                - script.execute: sendFanSpeed # 1E
+                - script.wait: sendFanSpeed
+                - delay: 100ms
+                - script.execute: sendFurnaceStatusRequest # 06
+                - script.wait: sendFurnaceStatusRequest
+          - if: # fan only
+              condition:
+                lambda: return get_briviscustomcomponent(id(brivis_custom_object))->GetMode()  == 4;
+              then:
+                - script.execute: sendTime # 07
+                - script.wait: sendTime
+                - delay: 100ms
+                - script.execute: sendFanSpeed #1E
+                - script.wait: sendFanSpeed
+                - delay: 100ms
+                - script.execute: sendFurnaceStatusRequest # 06
+                - script.wait: sendFurnaceStatusRequest
+          - if: # heat
+              condition:
+                lambda: return get_briviscustomcomponent(id(brivis_custom_object))->GetMode()  == 3;
+              then:
+                - script.execute: sendTime # 07
+                - script.wait: sendTime
+                - delay: 100ms
+                - script.execute: sendPingFurnace #09
+                - script.wait: sendPingFurnace
+                - delay: 100ms
+                - script.execute: sendTemperatureInfo #0B
+                - script.wait: sendTemperatureInfo
+                - delay: 100ms
+                - script.execute: sendLongPing # 29
+                - script.wait: sendLongPing
+                - delay: 100ms
+                - script.execute: sendFurnaceStatusRequest #06
+                - script.wait: sendFurnaceStatusRequest
+      - seconds: /1
+        then:
+          - lambda: id(update) = get_briviscustomcomponent(id(brivis_custom_object))->GetUpdate();
+          - if:
+              condition:
+                lambda: return id(update) == 1;
+              then:
+                - script.execute: sendFanSpeed # 1E
+                - script.wait: sendFanSpeed
+          - if:
+              condition:
+                lambda: return id(update) == 2;
+              then:
+                - script.execute: sendTemperatureInfo # 0B
+                - script.wait: sendTemperatureInfo
+          - if:
+              condition:
+                lambda: return id(update) == 3;
+              then:
+                - script.execute: sendIdle # 08
+                - script.wait: sendIdle
+                - delay: 100ms
+                - script.execute: sendFanSpeed # 1E
+                - script.wait: sendFanSpeed
+
 captive_portal:
 
 # Enable logging
@@ -152,4 +439,4 @@ api:
     key: !secret esphome_encryption
 
 ota:
-   password: !secret esphome_ota_pass
+  password: !secret esphome_ota_pass
