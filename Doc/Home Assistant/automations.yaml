@@ -1,135 +1,64 @@
-- id: '1662587570468'
-  alias: 'Heater: Turn on in the morning'
-  description: ''
+- id: 'heater_on_triggers'
+  alias: "Heater: Turn on (3 triggers)"
+  description: ""
   trigger:
-  - platform: state
-    entity_id:
-    - schedule.heat
-    to: 'on'
-  condition:
-  - condition: and
-    conditions:
-    - condition: numeric_state
+    - platform: state
+      entity_id:
+        - schedule.heat
+      to: "on"
+    - platform: state
+      entity_id:
+        - zone.home
+      from: "0"
+    - platform: numeric_state
       entity_id: sensor.bom_canberra_temperature
       below: 15
-    - condition: state
-      entity_id: climate.heater
-      state: 'off'
-    - condition: numeric_state
-      entity_id: zone.home
-      above: 0
-  action:
-  - service: climate.turn_on
-    data: {}
-    target:
-      entity_id: climate.heater
-  mode: single
-- id: '1662587867360'
-  alias: 'Heater: Turn off at night'
-  description: ''
-  trigger:
-  - platform: state
-    entity_id:
-    - schedule.heat
-    to: 'off'
   condition:
-  - condition: state
-    entity_id: climate.heater
-    state: heat
+    - condition: and
+      conditions:
+        - condition: state
+          entity_id: climate.heater
+          state: "off"
+        - condition: state
+          entity_id: schedule.heat
+          state: "on"
+        - condition: numeric_state
+          entity_id: zone.home
+          above: 0
+        - condition: numeric_state
+          entity_id: sensor.bom_canberra_temperature
+          below: 15
   action:
-  - service: climate.turn_off
-    data: {}
-    target:
-      entity_id: climate.heater
+    - service: climate.turn_on
+      data: {}
+      target:
+        entity_id: climate.heater
   mode: single
-- id: '1662587987736'
-  alias: 'Heater: Turn off when everyone leaves'
-  description: ''
+- id: 'heater_off_triggers'
+  alias: "Heater: Turn off (3 triggers)"
+  description: ""
   trigger:
-  - platform: state
-    entity_id:
-    - zone.home
-    to: '0'
-  condition:
-  - condition: state
-    entity_id: climate.heater
-    state: heat
-  action:
-  - service: climate.turn_off
-    data: {}
-    target:
-      entity_id: climate.heater
-  mode: single
-- id: '1662588158075'
-  alias: 'Heater: Turn on when someone comes home'
-  description: ''
-  trigger:
-  - platform: state
-    entity_id:
-    - zone.home
-    from: '0'
-  condition:
-  - condition: and
-    conditions:
-    - condition: state
-      entity_id: schedule.heat
-      state: 'on'
-    - condition: numeric_state
+    - platform: state
+      entity_id:
+        - schedule.heat
+      to: "off"
+    - platform: numeric_state
       entity_id: sensor.bom_canberra_temperature
-      below: 15
-    - condition: state
-      entity_id: climate.heater
-      state: 'off'
-  action:
-  - service: climate.turn_on
-    data: {}
-    target:
-      entity_id: climate.heater
-  mode: single
-- id: '1662588400978'
-  alias: 'Heater: Turn off when outside temperature gets to 15'
-  description: ''
-  trigger:
-  - platform: numeric_state
-    entity_id: sensor.bom_canberra_temperature
-    above: 15
+      above: 15
+    - platform: state
+      entity_id:
+        - zone.home
+      to: "0"
   condition:
-  - condition: and
-    conditions:
     - condition: state
       entity_id: climate.heater
       state: heat
-    - condition: numeric_state
-      entity_id: zone.home
-      above: 0
   action:
-  - service: climate.turn_off
-    data: {}
-    target:
-      entity_id: climate.heater
+    - service: climate.turn_off
+      data: {}
+      target:
+        entity_id: climate.heater
   mode: single
-- id: '1662616253509'
-  alias: 'Heater: Turn on when outside temperature goes below 15'
-  description: ''
-  trigger:
-  - platform: numeric_state
-    entity_id: sensor.bom_canberra_temperature
-    below: 15
-  condition:
-  - condition: and
-    conditions:
-    - condition: state
-      entity_id: climate.heater
-      state: 'off'
-    - condition: numeric_state
-      entity_id: zone.home
-      above: 0
-    - condition: state
-      entity_id: schedule.heat
-      state: 'on'
-  action:
-  - service: climate.turn_on
-    data: {}
-    target:
-      entity_id: climate.heater
-  mode: single
+
+
+
